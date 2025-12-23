@@ -1,154 +1,165 @@
+"use client";
+
 import Link from "next/link";
+import Image from "next/image";
 import { Product } from "@/types/product";
-import { notFound } from "next/navigation";
+import { notFound, useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { getProducts } from "@/utils/storage";
 
-// Mock Data - Synced with Listing Page
-const products: Product[] = [
-    {
-        id: "1",
-        name: "Razer BlackWidow V4 Pro",
-        description: "Mechanical gaming keyboard with Razer Chroma RGB, dedicated macro keys, and command dial. Experience immersive underglow and per-key lighting tailored for ultimate battle stations.",
-        price: 8990,
-        imageUrl: "https://images.unsplash.com/photo-1595225476474-87563907a212?w=500&auto=format&fit=crop&q=60",
-        category: "Keyboard",
-        stock: 5,
-        createdAt: new Date().toISOString(),
-    },
-    {
-        id: "2",
-        name: "Logitech G Pro X Superlight 2",
-        description: "Ultra-lightweight wireless gaming mouse designed for esports professionals. Featuring 2K polling, Hybrid Optical-Mechanical Switches, and Hero 2 sensor.",
-        price: 5690,
-        imageUrl: "https://images.unsplash.com/photo-1615663245857-acda5b2a643e?w=500&auto=format&fit=crop&q=60",
-        category: "Mouse",
-        stock: 15,
-        createdAt: new Date().toISOString(),
-    },
-    {
-        id: "3",
-        name: "HyperX Cloud Alpha Wireless",
-        description: "DTS Headphone:X Spatial Audio and up to 300 hours of battery life. Dual Chamber Drivers for incredible audio distinction and reduced distortion.",
-        price: 6990,
-        imageUrl: "https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=500&auto=format&fit=crop&q=60",
-        category: "Headset",
-        stock: 10,
-        createdAt: new Date().toISOString(),
-    },
-    {
-        id: "4",
-        name: "Secretlab TITAN Evo",
-        description: "The gold standard of gaming chairs. Integrated lumbar support and magnetic memory foam head pillow.",
-        price: 18900,
-        imageUrl: "https://images.unsplash.com/photo-1616628188550-808882bab58c?w=500&auto=format&fit=crop&q=60",
-        category: "Gaming Chair",
-        stock: 3,
-        createdAt: new Date().toISOString(),
-    },
-    {
-        id: "5",
-        name: "ASUS ROG Swift OLED PG27AQDM",
-        description: "27-inch 1440p OLED gaming monitor with 240Hz refresh rate and 0.03ms response time.",
-        price: 34900,
-        imageUrl: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=500&auto=format&fit=crop&q=60",
-        category: "Monitor",
-        stock: 2,
-        createdAt: new Date().toISOString(),
-    },
-    {
-        id: "6",
-        name: "SteelSeries Apex Pro TKL",
-        description: "World's fastest keyboard with adjustable OmniPoint 2.0 switches.",
-        price: 7990,
-        imageUrl: "https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?w=500&auto=format&fit=crop&q=60",
-        category: "Keyboard",
-        stock: 8,
-        createdAt: new Date().toISOString(),
+const getValidImageUrl = (url: string) => {
+    if (!url) return "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=500&auto=format&fit=crop&q=60";
+    if (url.startsWith("http") || url.startsWith("data:") || url.startsWith("/")) return url;
+    return "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=500&auto=format&fit=crop&q=60";
+};
+
+export default function ProductDetailPage() {
+    const params = useParams();
+    const id = params?.id as string;
+    const [product, setProduct] = useState<Product | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (id) {
+            const products = getProducts();
+            const foundProduct = products.find((p) => p.id === id);
+            setProduct(foundProduct || null);
+            setLoading(false);
+        }
+    }, [id]);
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+                <div className="text-purple-500 font-bold text-xl animate-pulse">Loading Details...</div>
+            </div>
+        );
     }
-];
-
-export default async function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
-    const resolvedParams = await params;
-    const product = products.find((p) => p.id === resolvedParams.id);
 
     if (!product) {
-        notFound();
+        return (
+            <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center text-white">
+                <h1 className="text-2xl font-bold mb-4">Product Not Found</h1>
+                <p className="text-neutral-400 mb-6">The gear you are looking for does not exist or has been removed.</p>
+                <Link href="/product" className="px-6 py-2 bg-purple-600 hover:bg-purple-700 rounded text-sm font-bold uppercase transition-colors">
+                    Back to Inventory
+                </Link>
+            </div>
+        );
     }
 
     return (
         <div className="min-h-screen bg-[#0a0a0a] text-white font-sans selection:bg-purple-500 selection:text-white">
-            {/* Background Glow */}
-            <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-                <div className="absolute -top-[20%] -right-[10%] w-[70vw] h-[70vw] bg-purple-900/10 blur-[150px] rounded-full"></div>
-            </div>
-
-            <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-                <Link
-                    href="/product"
-                    className="inline-flex items-center text-sm font-bold text-gray-500 hover:text-white transition-colors mb-12 uppercase tracking-wide group"
-                >
-                    <span className="mr-2 group-hover:-translate-x-1 transition-transform">&larr;</span> Back to Gear
-                </Link>
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+                <nav className="flex mb-8" aria-label="Breadcrumb">
+                    <ol className="flex items-center space-x-4">
+                        <li>
+                            <div>
+                                <Link href="/product" className="text-neutral-400 hover:text-white transition-colors">
+                                    <span className="sr-only">Home</span>
+                                    GAMING GEAR
+                                </Link>
+                            </div>
+                        </li>
+                        <li>
+                            <div className="flex items-center">
+                                <svg className="flex-shrink-0 h-5 w-5 text-neutral-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                                </svg>
+                                <a href="#" className="ml-4 text-sm font-medium text-purple-500 pointer-events-none" aria-current="page">
+                                    {product.name}
+                                </a>
+                            </div>
+                        </li>
+                    </ol>
+                </nav>
 
                 <div className="lg:grid lg:grid-cols-2 lg:gap-x-16 lg:items-start">
                     {/* Image Gallery */}
                     <div className="flex flex-col-reverse">
-                        <div className="relative w-full aspect-[4/3] bg-gray-900/50 rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-purple-900/20 group">
-                            <div className="absolute inset-0 bg-gradient-to-tr from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                            <img
-                                src={product.imageUrl}
+                        <div className="relative w-full aspect-[4/3] bg-[#111] rounded-lg overflow-hidden border border-neutral-800 shadow-[0_0_50px_-12px_rgba(168,85,247,0.2)]">
+                            <Image
+                                src={getValidImageUrl(product.imageUrl)}
                                 alt={product.name}
-                                className="w-full h-full object-center object-cover hover:scale-105 transition-transform duration-700"
+                                fill
+                                className="object-cover object-center"
+                                priority
+                                sizes="(max-width: 768px) 100vw, 50vw"
                             />
                         </div>
                     </div>
 
                     {/* Product Info */}
-                    <div className="mt-10 px-4 sm:mt-16 sm:px-0 lg:mt-0 flex flex-col h-full justify-center">
+                    <div className="mt-10 px-4 sm:px-0 sm:mt-16 lg:mt-0">
                         <div className="mb-6">
-                            <span className="inline-block bg-purple-900/30 border border-purple-500/30 text-purple-300 text-xs px-3 py-1 rounded full uppercase tracking-wider font-bold shadow-[0_0_10px_rgba(168,85,247,0.3)]">
+                            <span className="inline-block px-3 py-1 bg-purple-900/30 border border-purple-500/30 rounded text-xs font-bold text-purple-400 uppercase tracking-widest mb-3">
                                 {product.category}
                             </span>
+                            <h1 className="text-4xl font-extrabold tracking-tight text-white uppercase italic sm:text-5xl">
+                                {product.name}
+                            </h1>
                         </div>
-                        <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white mb-4 italic uppercase">
-                            {product.name}
-                        </h1>
 
-                        <div className="mt-2 mb-8">
-                            <h2 className="sr-only">Product information</h2>
-                            <p className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">
+                        <div className="mt-3">
+                            <p className="text-3xl text-white font-bold">
                                 ฿{product.price.toLocaleString()}
                             </p>
                         </div>
 
-                        <div className="prose prose-invert border-t border-white/10 pt-8 mb-8">
-                            <h3 className="sr-only">Description</h3>
-                            <p className="text-lg text-gray-300 leading-relaxed font-light">
-                                {product.description}
-                            </p>
-                        </div>
-
-                        <div className="flex items-center space-x-4 mb-8">
-                            <div className={`flex items-center px-3 py-1 rounded bg-black/40 border ${product.stock > 0 ? 'border-green-500/30 text-green-400' : 'border-red-500/30 text-red-400'}`}>
-                                <div className={`h-2 w-2 rounded-full mr-2 ${product.stock > 0 ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500'}`}></div>
-                                <span className="text-sm font-bold uppercase tracking-wide">
-                                    {product.stock > 0 ? `In Stock: ${product.stock}` : 'Out of Stock'}
+                        <div className="mt-8 relative">
+                            <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                                <div className="w-full border-t border-neutral-800" />
+                            </div>
+                            <div className="relative flex justify-start">
+                                <span className="pr-3 bg-[#0a0a0a] text-sm font-bold text-neutral-500 uppercase tracking-wide">
+                                    Specifications
                                 </span>
                             </div>
                         </div>
 
-                        <div className="flex flex-col gap-4 sm:flex-row">
-                            <button
-                                type="button"
-                                className="flex-1 bg-white text-black border border-transparent rounded-lg py-4 px-8 flex items-center justify-center text-base font-bold uppercase tracking-wider hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-black focus:ring-white transition-all transform hover:-translate-y-1 shadow-[0_0_20px_rgba(255,255,255,0.3)]"
-                            >
-                                Add to Cart
-                            </button>
-                            <button
-                                type="button"
-                                className="flex-1 bg-transparent border border-white/20 rounded-lg py-4 px-8 flex items-center justify-center text-base font-bold text-white uppercase tracking-wider hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-black focus:ring-purple-500 transition-all"
-                            >
-                                Save
-                            </button>
+                        <div className="mt-6">
+                            <p className="text-base text-neutral-300 leading-relaxed">
+                                {product.description}
+                            </p>
+                        </div>
+
+                        <div className="mt-8 border-t border-neutral-800 pt-8">
+                            <div className="flex items-center space-x-4">
+                                <div className={`flex items-center space-x-2 ${product.stock > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                    <span className="relative flex h-3 w-3">
+                                        {product.stock > 0 && (
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                        )}
+                                        <span className={`relative inline-flex rounded-full h-3 w-3 ${product.stock > 0 ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                                    </span>
+                                    <span className="text-sm font-bold uppercase tracking-wider">
+                                        {product.stock > 0 ? 'In Stock' : 'Out of Stock'}
+                                    </span>
+                                </div>
+                                <span className="text-neutral-600">|</span>
+                                <span className="text-sm text-neutral-400 font-mono">
+                                    ID: {product.id}
+                                </span>
+                            </div>
+
+                            <div className="mt-8 flex gap-4">
+                                <button
+                                    type="button"
+                                    disabled={product.stock === 0}
+                                    className={`flex-1 flex items-center justify-center px-8 py-4 border border-transparent text-base font-bold rounded uppercase tracking-widest transition-all ${product.stock > 0
+                                            ? 'bg-purple-600 hover:bg-purple-700 text-white hover:shadow-[0_0_20px_rgba(168,85,247,0.5)] transform hover:-translate-y-1'
+                                            : 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
+                                        }`}
+                                >
+                                    {product.stock > 0 ? 'Add to Cart' : 'Sold Out'}
+                                </button>
+                                {/* Like Button */}
+                                <button className="flex items-center justify-center px-4 py-4 border border-neutral-800 rounded hover:border-purple-500 hover:text-purple-500 transition-colors text-neutral-400">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
