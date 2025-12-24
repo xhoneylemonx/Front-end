@@ -1,28 +1,38 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { addProduct } from "@/utils/storage";
-import { Product } from "@/types/product";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import api from "@/lib/axios";
+import { productSchema, ProductFormData } from "@/lib/schema";
+import { useState } from "react";
+import { AxiosError } from "axios";
 
 export default function CreateProductPage() {
     const router = useRouter();
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const [formData, setFormData] = useState({
-        name: "",
-        price: "",
-        category: "",
-        description: "",
-        imageUrl: "",
-        stock: "",
-    });
     const [imageError, setImageError] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
-    };
+    const {
+        register,
+        handleSubmit,
+        setValue,
+        watch,
+        formState: { errors },
+    } = useForm<ProductFormData>({
+        resolver: zodResolver(productSchema),
+        defaultValues: {
+            name: "",
+            price: 0,
+            category: "",
+            description: "",
+            imageUrl: "",
+            stock: 0,
+        },
+    });
+
+    const imageUrl = watch("imageUrl");
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -31,42 +41,33 @@ export default function CreateProductPage() {
         if (file) {
             if (file.size > 500 * 1024) { // 500KB limit
                 setImageError("File size too large. Please upload an image under 500KB.");
-                setFormData((prev) => ({ ...prev, imageUrl: "" }));
-                if (fileInputRef.current) fileInputRef.current.value = ""; // Reset input
+                setValue("imageUrl", "");
+                e.target.value = ""; // Reset input
                 return;
             }
 
             const reader = new FileReader();
             reader.onloadend = () => {
-                setFormData((prev) => ({ ...prev, imageUrl: reader.result as string }));
+                setValue("imageUrl", reader.result as string);
             };
             reader.readAsDataURL(file);
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-
-        // Use uploaded image OR internet URL OR placeholder
-        const finalImage = formData.imageUrl || "https://images.unsplash.com/photo-1511556820780-dba9ba36abe3?w=500&auto=format&fit=crop&q=60";
-
-        const newProduct: Product = {
-            id: Date.now().toString(),
-            name: formData.name,
-            price: Number(formData.price),
-            category: formData.category,
-            description: formData.description,
-            imageUrl: finalImage,
-            stock: Number(formData.stock),
-            createdAt: new Date().toISOString(),
-        };
-
+    const onSubmit = async (data: ProductFormData) => {
+        setIsSubmitting(true);
         try {
-            addProduct(newProduct);
+            await api.post('/products', data);
             router.push("/product");
         } catch (error) {
-            console.error("Storage failed", error);
-            alert("Failed to save product. Storage might be full.");
+            console.error("Failed to create product", error);
+            if (error instanceof AxiosError) {
+                alert(`Failed to save product: ${error.message}`);
+            } else {
+                alert("Failed to save product. Please try again.");
+            }
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -89,7 +90,7 @@ export default function CreateProductPage() {
                     </Link>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-8 space-y-6">
+                <form onSubmit={handleSubmit(onSubmit)} className="p-8 space-y-6">
                     <div className="space-y-6">
                         <div>
                             <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
@@ -98,13 +99,11 @@ export default function CreateProductPage() {
                             <input
                                 type="text"
                                 id="name"
-                                name="name"
-                                required
-                                value={formData.name}
-                                onChange={handleChange}
-                                className="block w-full px-4 py-3 rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors outline-none"
+                                {...register("name")}
+                                className={`block w-full px-4 py-3 rounded-md border ${errors.name ? 'border-red-500' : 'border-gray-300'} bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors outline-none`}
                                 placeholder="e.g. Wireless Coffee Maker"
                             />
+                            {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -119,16 +118,13 @@ export default function CreateProductPage() {
                                     <input
                                         type="number"
                                         id="price"
-                                        name="price"
-                                        required
-                                        min="0"
                                         step="1"
-                                        value={formData.price}
-                                        onChange={handleChange}
-                                        className="block w-full pl-8 pr-4 py-3 rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors outline-none"
+                                        {...register("price", { valueAsNumber: true })}
+                                        className={`block w-full pl-8 pr-4 py-3 rounded-md border ${errors.price ? 'border-red-500' : 'border-gray-300'} bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors outline-none`}
                                         placeholder="0.00"
                                     />
                                 </div>
+                                {errors.price && <p className="text-red-500 text-xs mt-1">{errors.price.message}</p>}
                             </div>
 
                             <div>
@@ -138,14 +134,11 @@ export default function CreateProductPage() {
                                 <input
                                     type="number"
                                     id="stock"
-                                    name="stock"
-                                    required
-                                    min="0"
-                                    value={formData.stock}
-                                    onChange={handleChange}
-                                    className="block w-full px-4 py-3 rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors outline-none"
+                                    {...register("stock", { valueAsNumber: true })}
+                                    className={`block w-full px-4 py-3 rounded-md border ${errors.stock ? 'border-red-500' : 'border-gray-300'} bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors outline-none`}
                                     placeholder="0"
                                 />
+                                {errors.stock && <p className="text-red-500 text-xs mt-1">{errors.stock.message}</p>}
                             </div>
                         </div>
 
@@ -155,11 +148,8 @@ export default function CreateProductPage() {
                             </label>
                             <select
                                 id="category"
-                                name="category"
-                                required
-                                value={formData.category}
-                                onChange={handleChange}
-                                className="block w-full px-4 py-3 rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors outline-none"
+                                {...register("category")}
+                                className={`block w-full px-4 py-3 rounded-md border ${errors.category ? 'border-red-500' : 'border-gray-300'} bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors outline-none`}
                             >
                                 <option value="" className="text-gray-500">Select Category</option>
                                 <option value="Electronics">Electronics</option>
@@ -169,6 +159,7 @@ export default function CreateProductPage() {
                                 <option value="Toys">Toys</option>
                                 <option value="Others">Others</option>
                             </select>
+                            {errors.category && <p className="text-red-500 text-xs mt-1">{errors.category.message}</p>}
                         </div>
 
                         {/* Image Input Section */}
@@ -187,7 +178,6 @@ export default function CreateProductPage() {
                                     <span className="text-xs text-gray-400 mt-1">PNG, JPG up to 500KB</span>
                                     <input
                                         type="file"
-                                        ref={fileInputRef}
                                         onChange={handleFileChange}
                                         accept="image/*"
                                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
@@ -211,17 +201,15 @@ export default function CreateProductPage() {
                                 <input
                                     type="url"
                                     id="imageUrl"
-                                    name="imageUrl"
-                                    value={formData.imageUrl}
-                                    onChange={handleChange}
+                                    {...register("imageUrl")}
                                     className="block w-full px-4 py-3 rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors outline-none text-sm"
                                     placeholder="https://example.com/image.jpg"
                                 />
 
-                                {formData.imageUrl && !imageError && (
+                                {imageUrl && !imageError && (
                                     <div className="mt-2 w-full h-48 bg-gray-100 rounded border border-gray-200 overflow-hidden relative">
                                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                                        <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-contain" />
+                                        <img src={imageUrl || ""} alt="Preview" className="w-full h-full object-contain" />
                                     </div>
                                 )}
                             </div>
@@ -233,14 +221,12 @@ export default function CreateProductPage() {
                             </label>
                             <textarea
                                 id="description"
-                                name="description"
                                 rows={4}
-                                required
-                                value={formData.description}
-                                onChange={handleChange}
-                                className="block w-full px-4 py-3 rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors outline-none"
+                                {...register("description")}
+                                className={`block w-full px-4 py-3 rounded-md border ${errors.description ? 'border-red-500' : 'border-gray-300'} bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors outline-none`}
                                 placeholder="Detailed description of the product..."
                             />
+                            {errors.description && <p className="text-red-500 text-xs mt-1">{errors.description.message}</p>}
                         </div>
                     </div>
 
@@ -253,9 +239,10 @@ export default function CreateProductPage() {
                         </Link>
                         <button
                             type="submit"
-                            className="px-6 py-2.5 bg-black hover:bg-gray-800 text-white text-sm font-medium rounded-md shadow-md transform hover:-translate-y-0.5 transition-all"
+                            disabled={isSubmitting}
+                            className="px-6 py-2.5 bg-black hover:bg-gray-800 text-white text-sm font-medium rounded-md shadow-md transform hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Create Product
+                            {isSubmitting ? 'Creating...' : 'Create Product'}
                         </button>
                     </div>
                 </form>
