@@ -27,3 +27,24 @@ export const addProduct = async (product: Product) => {
     const products = await getProducts();
     await saveProducts([product, ...products]);
 };
+
+export const updateProduct = async (updatedProduct: Product) => {
+    const products = await getProducts();
+    const index = products.findIndex((p) => p.id === updatedProduct.id);
+    if (index !== -1) {
+        products[index] = updatedProduct;
+        await saveProducts(products);
+        return true;
+    }
+    return false;
+};
+
+export const deleteProduct = async (id: string) => {
+    const products = await getProducts();
+    const newProducts = products.filter((p) => p.id !== id);
+    if (newProducts.length !== products.length) {
+        await saveProducts(newProducts);
+        return true;
+    }
+    return false;
+};

@@ -1,19 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Product } from "@/types/product";
 import api from "@/lib/axios";
 
 export default function ProductDetailPage() {
-    // Correctly unwrap params using React.use() or similar if strictly following Next 15/16 but useParams hook handles it in client components usually or we await it.
-    // In "use client" component, useParams returns the params object directly.
     const params = useParams();
+    const router = useRouter();
     const id = params?.id as string;
 
     const [product, setProduct] = useState<Product | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         const fetchProduct = async () => {
@@ -30,6 +30,22 @@ export default function ProductDetailPage() {
 
         fetchProduct();
     }, [id]);
+
+    const handleDelete = async () => {
+        if (!confirm("Are you sure you want to delete this product? This action cannot be undone.")) {
+            return;
+        }
+
+        setIsDeleting(true);
+        try {
+            await api.delete(`/products/${id}`);
+            router.push("/product");
+        } catch (error) {
+            console.error("Failed to delete product", error);
+            alert("Failed to delete product. Please try again.");
+            setIsDeleting(false);
+        }
+    };
 
     if (loading) {
         return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -49,7 +65,7 @@ export default function ProductDetailPage() {
     return (
         <div className="min-h-screen bg-gray-50 text-gray-900 font-sans py-12 px-4">
             <div className="max-w-5xl mx-auto">
-                <div className="mb-6">
+                <div className="mb-6 flex justify-between items-center">
                     <Link
                         href="/product"
                         className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors flex items-center gap-1"
@@ -59,6 +75,22 @@ export default function ProductDetailPage() {
                         </svg>
                         Back to Products
                     </Link>
+
+                    <div className="flex gap-3">
+                        <Link
+                            href={`/product/${id}/edit`}
+                            className="px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors shadow-sm"
+                        >
+                            Edit
+                        </Link>
+                        <button
+                            onClick={handleDelete}
+                            disabled={isDeleting}
+                            className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50"
+                        >
+                            {isDeleting ? 'Deleting...' : 'Delete'}
+                        </button>
+                    </div>
                 </div>
 
                 <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col md:flex-row">
