@@ -30,7 +30,7 @@ export const addProduct = async (product: Product) => {
 
 export const updateProduct = async (updatedProduct: Product) => {
     const products = await getProducts();
-    const index = products.findIndex((p) => p.id === updatedProduct.id);
+    const index = products.findIndex((p) => String(p.id) === String(updatedProduct.id));
     if (index !== -1) {
         products[index] = updatedProduct;
         await saveProducts(products);
@@ -41,7 +41,7 @@ export const updateProduct = async (updatedProduct: Product) => {
 
 export const deleteProduct = async (id: string) => {
     const products = await getProducts();
-    const newProducts = products.filter((p) => p.id !== id);
+    const newProducts = products.filter((p) => String(p.id) !== String(id));
     if (newProducts.length !== products.length) {
         await saveProducts(newProducts);
         return true;

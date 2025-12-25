@@ -6,9 +6,12 @@ import { Product } from '@/types/product';
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
     const id = (await params).id;
     const products = await getProducts();
-    const product = products.find((p) => p.id === id);
+
+    // Use loose comparison or explicit string conversion to handle potential type mismatches
+    const product = products.find((p) => String(p.id) === String(id));
 
     if (!product) {
+        console.log(`[API] Product not found for ID: ${id}. Total products: ${products.length}`);
         return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
@@ -26,9 +29,11 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
         }
 
         const existingProducts = await getProducts();
-        const existingProduct = existingProducts.find((p) => p.id === id);
+        // Robust comparison
+        const existingProduct = existingProducts.find((p) => String(p.id) === String(id));
 
         if (!existingProduct) {
+            console.log(`[API PUT] Product not found for ID: ${id}`);
             return NextResponse.json({ error: 'Product not found' }, { status: 404 });
         }
 
@@ -58,9 +63,11 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
         const id = (await params).id;
+        console.log(`[API DELETE] Attempting to delete product with ID: ${id}`);
         const success = await deleteProduct(id);
 
         if (!success) {
+            console.log(`[API DELETE] Failed to delete. Product ID ${id} not found.`);
             return NextResponse.json({ error: 'Product not found' }, { status: 404 });
         }
 

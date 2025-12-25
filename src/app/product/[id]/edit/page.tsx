@@ -27,7 +27,7 @@ export default function EditProductPage() {
         reset,
         formState: { errors },
     } = useForm<ProductFormData>({
-        resolver: zodResolver(productSchema),
+        resolver: zodResolver(productSchema as any),
         defaultValues: {
             name: "",
             price: 0,
@@ -42,7 +42,10 @@ export default function EditProductPage() {
 
     useEffect(() => {
         const fetchProduct = async () => {
-            if (!id) return;
+            if (!id) {
+                setLoading(false);
+                return;
+            }
             try {
                 const response = await api.get(`/products/${id}`);
                 const product: Product = response.data;

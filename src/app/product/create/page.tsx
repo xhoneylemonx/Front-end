@@ -21,7 +21,7 @@ export default function CreateProductPage() {
         watch,
         formState: { errors },
     } = useForm<ProductFormData>({
-        resolver: zodResolver(productSchema),
+        resolver: zodResolver(productSchema as any),
         defaultValues: {
             name: "",
             price: 0,
