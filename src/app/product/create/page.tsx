@@ -13,6 +13,7 @@ export default function CreateProductPage() {
     const router = useRouter();
     const [imageError, setImageError] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
     const {
         register,
@@ -37,15 +38,20 @@ export default function CreateProductPage() {
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         setImageError("");
+        setSelectedFile(null);
 
         if (file) {
-            if (file.size > 500 * 1024) { // 500KB limit
-                setImageError("File size too large. Please upload an image under 500KB.");
+            // Updated limit: 2MB to match backend
+            if (file.size > 2 * 1024 * 1024) {
+                setImageError("File size too large. Please upload an image under 2MB.");
                 setValue("imageUrl", "");
                 e.target.value = ""; // Reset input
                 return;
             }
 
+            setSelectedFile(file);
+
+            // Create preview URL
             const reader = new FileReader();
             reader.onloadend = () => {
                 setValue("imageUrl", reader.result as string);
@@ -57,12 +63,37 @@ export default function CreateProductPage() {
     const onSubmit = async (data: ProductFormData) => {
         setIsSubmitting(true);
         try {
-            await api.post('/products', data);
+            const formData = new FormData();
+            formData.append('name', data.name);
+            formData.append('price', data.price.toString());
+            formData.append('category', data.category);
+            formData.append('description', data.description);
+            formData.append('stock', data.stock.toString());
+
+            // If a file was selected, append it
+            if (selectedFile) {
+                formData.append('image', selectedFile);
+            }
+            // If user pasted a URL instead (and it's not the base64 preview of selected file)
+            // Note: Our current logic overwrites imageUrl with base64 preview if file selected.
+            // If selectedFile is null but imageUrl is present, it means user entered a URL string.
+            else if (data.imageUrl && !data.imageUrl.startsWith('data:')) {
+                // If backend supports imageUrl string (it does in Product entity), we can send it.
+                // However, our backend create DTO only takes 'imageUrl' but the controller file interceptor
+                // handles 'image' field for file.
+                // If the user sends a URL string, our Service currently only sets imageUrl from file path.
+                // But the schema allows passing payload. The `create` method in Service takes `...dto`.
+                // So if we pass `imageUrl` in body, it should work for URL strings too!
+                formData.append('imageUrl', data.imageUrl);
+            }
+
+            // Note: Axios will automatically set Content-Type to multipart/form-data
+            await api.post('/products', formData);
             router.push("/product");
         } catch (error) {
             console.error("Failed to create product", error);
             if (error instanceof AxiosError) {
-                alert(`Failed to save product: ${error.message}`);
+                alert(`Failed to save product: ${error.response?.data?.message || error.message}`);
             } else {
                 alert("Failed to save product. Please try again.");
             }
@@ -175,11 +206,11 @@ export default function CreateProductPage() {
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
                                     </svg>
                                     <span className="text-sm font-medium text-gray-600 dark:text-zinc-400">Click to upload image</span>
-                                    <span className="text-xs text-gray-400 dark:text-zinc-500 mt-1">PNG, JPG up to 500KB</span>
+                                    <span className="text-xs text-gray-400 dark:text-zinc-500 mt-1">PNG, JPG, WEBP up to 2MB</span>
                                     <input
                                         type="file"
                                         onChange={handleFileChange}
-                                        accept="image/*"
+                                        accept="image/jpeg,image/png,image/webp"
                                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                     />
                                 </div>
@@ -202,14 +233,15 @@ export default function CreateProductPage() {
                                     type="url"
                                     id="imageUrl"
                                     {...register("imageUrl")}
-                                    className="block w-full px-4 py-3 rounded-md border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors outline-none text-sm"
+                                    disabled={!!selectedFile}
+                                    className="block w-full px-4 py-3 rounded-md border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors outline-none text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                     placeholder="https://example.com/image.jpg"
                                 />
 
                                 {imageUrl && !imageError && (
                                     <div className="mt-2 w-full h-48 bg-gray-100 dark:bg-zinc-800 rounded border border-gray-200 dark:border-zinc-700 overflow-hidden relative">
                                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                                        <img src={imageUrl || ""} alt="Preview" className="w-full h-full object-contain" />
+                                        <img src={imageUrl} alt="Preview" className="w-full h-full object-contain" />
                                     </div>
                                 )}
                             </div>

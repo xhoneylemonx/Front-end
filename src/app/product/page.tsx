@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Product } from "@/types/product";
 import api from "@/lib/axios";
+import { getImageUrl } from "@/utils/image";
 
 export default function ProductPage() {
     const [products, setProducts] = useState<Product[]>([]);
@@ -62,7 +63,7 @@ export default function ProductPage() {
                                 <div className="aspect-[16/10] bg-gray-100 dark:bg-zinc-900 relative overflow-hidden">
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img
-                                        src={product.imageUrl}
+                                        src={getImageUrl(product.imageUrl)}
                                         alt={product.name}
                                         className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
                                     />

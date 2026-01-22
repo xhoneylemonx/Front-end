@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Product } from "@/types/product";
 import api from "@/lib/axios";
+import { getImageUrl } from "@/utils/image";
 
 export default function ProductDetailPage() {
     const params = useParams();
@@ -100,7 +101,7 @@ export default function ProductDetailPage() {
                     <div className="md:w-1/2 h-96 md:h-auto bg-gray-100 dark:bg-zinc-800 relative">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                            src={product.imageUrl}
+                            src={getImageUrl(product.imageUrl)}
                             alt={product.name}
                             className="w-full h-full object-cover"
                         />
